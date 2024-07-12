@@ -1,11 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": "./",
     "outDir": "dist",
     "composite": true
   },
-  "include": ["src/**/*.ts", "binding/**/*.d.ts"],
+  "include": ["src/**/*.ts", "binding/**/*.d.ts", "nodeLayer/**/*.ts"],
   "exclude": ["src/**/*.spec.ts"],
   "references": [
     {
