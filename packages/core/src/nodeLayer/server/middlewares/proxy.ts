@@ -1,6 +1,6 @@
 import type * as http from 'node:http';
-import type * as net from 'node:net';
-import connect from 'connect';
+// import type * as net from 'node:net';
+// import connect from 'connect';
 import httpProxy from 'http-proxy';
 
 export interface ProxyOptions extends httpProxy.ServerOptions {
