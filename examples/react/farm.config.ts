@@ -1,5 +1,4 @@
-export default (env) => {
-  console.log(env);
+export default (env: any) => {
   return {
     plugins: ["@farmfe/plugin-react"],
     server: {

@@ -22,12 +22,14 @@ import {
   normalizeOutput
 } from '../../config/normalize-config/normalize-output.js';
 import { normalizePersistentCache } from '../../config/normalize-config/normalize-persistent-cache.js';
+import { parseUserConfig } from '../../config/schema.js';
 import {
   FarmCLIOptions,
   ResolvedCompilation,
   ResolvedUserConfig,
   UserConfig
 } from '../../config/types.js';
+import { convertErrorMessage } from '../../utils/error.js';
 import { Logger } from '../../utils/logger.js';
 import merge from '../../utils/merge.js';
 import { traceDependencies } from '../../utils/trace-dependencies.js';
@@ -69,22 +71,22 @@ export async function resolveConfig(
   initialMode = 'development',
   initialNodeEnv = 'development'
 ): Promise<any> {
-  let envMode = inlineOptions.mode ?? initialMode;
-  let mode = initialMode;
+  let mode = inlineOptions.mode || initialMode;
   setProcessEnv(initialNodeEnv);
-  // // configPath may be file or directory
-  const configEnv = {
-    mode: mode,
-    envMode: envMode,
+  let configEnv = {
+    mode,
     command
   };
   const { configFile } = inlineOptions;
-  const userConfig: any = await loadConfigFile(
+  const loadedUserConfig: any = await loadConfigFile(
     configFile,
     inlineOptions,
     configEnv
   );
-  console.log(userConfig);
+  console.log(loadedUserConfig);
+
+  mode = inlineOptions.mode || loadedUserConfig.config.mode || mode;
+  configEnv.mode = mode;
 
   // if (loadedUserConfig) {
   //   configPath = loadedUserConfig.configFilePath;
@@ -177,60 +179,44 @@ export async function loadConfigFile(
   const { root = '.' } = inlineOptions;
   const configRootPath = path.resolve(root);
   let resolvedPath: string | undefined;
-  if (configFile) {
-    resolvedPath = path.resolve(root, configFile);
-  } else {
-    resolvedPath = await getConfigFilePath(configRootPath);
+  try {
+    if (configFile) {
+      resolvedPath = path.resolve(root, configFile);
+    } else {
+      resolvedPath = await getConfigFilePath(configRootPath);
+    }
+    const config = await readConfigFile(
+      inlineOptions,
+      resolvedPath,
+      configEnv,
+      logger
+    );
+    return {
+      config: config && parseUserConfig(config),
+      configFilePath: resolvedPath
+    };
+  } catch (error) {
+    // In this place, the original use of throw caused emit to the outermost catch
+    // callback, causing the code not to execute. If the internal catch compiler's own
+    // throw error can solve this problem, it will not continue to affect the execution of
+    // external code. We just need to return the default config.
+    const errorMessage = convertErrorMessage(error);
+    const stackTrace =
+      error.code === 'GenericFailure' ? '' : `\n${error.stack}`;
+    if (inlineOptions.mode === 'production') {
+      logger.error(
+        `Failed to load config file: ${errorMessage} \n${stackTrace}`,
+        {
+          exit: true
+        }
+      );
+    }
+    const potentialSolution =
+      'Potential solutions: \n1. Try set `FARM_CONFIG_FORMAT=cjs`(default to esm)\n2. Try set `FARM_CONFIG_FULL_BUNDLE=1`';
+    throw new Error(
+      `Failed to load farm config file: ${errorMessage}. \n ${potentialSolution} \n ${error.stack}`
+    );
   }
-  const config = await readConfigFile(
-    inlineOptions,
-    resolvedPath,
-    configEnv,
-    logger
-  );
-  return { config, configFilePath: resolvedPath };
-  // if configPath points to a directory, try to find a config file in it using default config
-  // try {
-  //   const configFilePath = await getConfigFilePath(configPath);
-
-  //   if (configFilePath) {
-  //     const config = await readConfigFile(
-  //       inlineOptions,
-  //       configFilePath,
-  //       logger,
-  //     );
-
-  //     return {
-  //       config: config && parseUserConfig(config),
-  //       configFilePath: configFilePath,
-  //     };
-  //   }
-  // } catch (error) {
-  //   // In this place, the original use of throw caused emit to the outermost catch
-  //   // callback, causing the code not to execute. If the internal catch compiler's own
-  //   // throw error can solve this problem, it will not continue to affect the execution of
-  //   // external code. We just need to return the default config.
-  //   const errorMessage = convertErrorMessage(error);
-  //   const stackTrace =
-  //     error.code === "GenericFailure" ? "" : `\n${error.stack}`;
-
-  //   if (inlineOptions.mode === "production") {
-  //     logger.error(
-  //       `Failed to load config file: ${errorMessage} \n${stackTrace}`,
-  //       {
-  //         exit: true,
-  //       },
-  //     );
-  //   }
-
-  //   const potentialSolution =
-  //     "Potential solutions: \n1. Try set `FARM_CONFIG_FORMAT=cjs`(default to esm)\n2. Try set `FARM_CONFIG_FULL_BUNDLE=1`";
-
-  //   throw new Error(
-  //     `Failed to load farm config file: ${errorMessage}. \n ${potentialSolution} \n ${error.stack}`,
-  //   );
-  // }
-  // return undefined;
 }
 
 async function readConfigFile(
@@ -386,8 +372,7 @@ export async function resolveDefaultUserConfig(options: any) {
       external: [
         ...(process.env.FARM_CONFIG_FULL_BUNDLE
           ? []
-          : ['!^(\\./|\\.\\./|[A-Za-z]:\\\\|/).*']),
-        '^@farmfe/core$'
+          : ['!^(\\./|\\.\\./|[A-Za-z]:\\\\|/).*'])
       ],
       partialBundling: {
         enforceResources: [
@@ -408,7 +393,7 @@ export async function resolveDefaultUserConfig(options: any) {
     }
   };
 
-  const resolvedUserConfig: ResolvedUserConfig = await resolveMergedUserConfig(
+  const resolvedUserConfig: ResolvedUserConfig = await resolveUserConfig(
     baseConfig,
     undefined,
     'development'
@@ -416,23 +401,22 @@ export async function resolveDefaultUserConfig(options: any) {
 
   const normalizedConfig = await normalizeUserCompilationConfig(
     resolvedUserConfig,
-    baseConfig,
     'development'
   );
 
   return normalizedConfig;
 }
 
-export async function resolveMergedUserConfig(
-  mergedUserConfig: UserConfig,
+export async function resolveUserConfig(
+  userConfig: UserConfig,
   configFilePath: string | undefined,
   mode: 'development' | 'production' | string,
   logger: Logger = new Logger()
 ): Promise<ResolvedUserConfig> {
   const resolvedUserConfig = {
-    ...mergedUserConfig,
+    ...userConfig,
     compilation: {
-      ...mergedUserConfig.compilation,
+      ...userConfig.compilation,
       external: []
     }
   } as ResolvedUserConfig;
@@ -471,7 +455,7 @@ export async function resolveMergedUserConfig(
 
   resolvedUserConfig.env = {
     ...userEnv,
-    NODE_ENV: mergedUserConfig.compilation.mode ?? mode,
+    NODE_ENV: userConfig.compilation.mode ?? mode,
     mode: mode
   };
 
@@ -480,7 +464,6 @@ export async function resolveMergedUserConfig(
 
 export async function normalizeUserCompilationConfig(
   resolvedUserConfig: ResolvedUserConfig,
-  userConfig: UserConfig,
   mode: CompilationMode = 'development',
   logger: Logger = new Logger(),
   isDefault = false
@@ -492,13 +475,13 @@ export async function normalizeUserCompilationConfig(
 
   resolvedUserConfig.root = resolvedRootPath;
 
-  if (!userConfig.compilation) {
-    userConfig.compilation = {};
+  if (!resolvedUserConfig.compilation) {
+    resolvedUserConfig.compilation = {};
   }
 
   // if normalize default config, skip check input option
   const inputIndexConfig = !isDefault
-    ? checkCompilationInputValue(userConfig, logger)
+    ? checkCompilationInputValue(resolvedUserConfig, logger)
     : {};
 
   const resolvedCompilation: ResolvedCompilation = merge(
@@ -521,31 +504,19 @@ export async function normalizeUserCompilationConfig(
   resolvedCompilation.coreLibPath = bindingPath;
 
   normalizeOutput(resolvedCompilation, isProduction, logger);
-  normalizeExternal(userConfig, resolvedCompilation);
+  normalizeExternal(resolvedUserConfig, resolvedCompilation);
 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore do not check type for this internal option
   if (!resolvedCompilation.assets?.publicDir) {
-    if (!resolvedCompilation.assets) {
-      resolvedCompilation.assets = {};
-    }
-
+    resolvedCompilation.assets = resolvedCompilation.assets || {};
     const userPublicDir = resolvedUserConfig.publicDir
       ? resolvedUserConfig.publicDir
       : join(resolvedCompilation.root, 'public');
 
-    if (isAbsolute(userPublicDir)) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore do not check type for this internal option
-      resolvedCompilation.assets.publicDir = userPublicDir;
-    } else {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore do not check type for this internal option
-      resolvedCompilation.assets.publicDir = join(
-        resolvedCompilation.root,
-        userPublicDir
-      );
-    }
+    resolvedCompilation.assets.publicDir = isAbsolute(userPublicDir)
+      ? userPublicDir
+      : join(resolvedCompilation.root, userPublicDir);
   }
 
   resolvedCompilation.define = Object.assign(
@@ -624,11 +595,7 @@ export async function normalizeUserCompilationConfig(
   if (isProduction) {
     resolvedCompilation.lazyCompilation = false;
   } else if (resolvedCompilation.lazyCompilation === undefined) {
-    if (isDevelopment) {
-      resolvedCompilation.lazyCompilation = true;
-    } else {
-      resolvedCompilation.lazyCompilation = false;
-    }
+    resolvedCompilation.lazyCompilation = isDevelopment;
   }
 
   if (resolvedCompilation.mode === undefined) {
@@ -686,22 +653,17 @@ export async function normalizeUserCompilationConfig(
 
     for (const [key, value] of Object.entries(compilation.input)) {
       if (!value && (value ?? true)) continue;
-      if (!path.isAbsolute(value) && !value.startsWith('./')) {
-        input[key] = `./${value}`;
-      } else {
-        input[key] = value;
-      }
+      input[key] =
+        !path.isAbsolute(value) && !value.startsWith('./')
+          ? `./${value}`
+          : value;
     }
 
     resolvedCompilation.input = input;
   }
 
   if (resolvedCompilation.treeShaking === undefined) {
-    if (isProduction) {
-      resolvedCompilation.treeShaking = true;
-    } else {
-      resolvedCompilation.treeShaking = false;
-    }
+    resolvedCompilation.treeShaking = isProduction;
   }
 
   if (resolvedCompilation.script?.plugins?.length) {
@@ -727,19 +689,11 @@ export async function normalizeUserCompilationConfig(
   }
 
   if (resolvedCompilation.minify === undefined) {
-    if (isProduction) {
-      resolvedCompilation.minify = true;
-    } else {
-      resolvedCompilation.minify = false;
-    }
+    resolvedCompilation.minify = isProduction;
   }
 
   if (resolvedCompilation.presetEnv === undefined) {
-    if (isProduction) {
-      resolvedCompilation.presetEnv = true;
-    } else {
-      resolvedCompilation.presetEnv = false;
-    }
+    resolvedCompilation.presetEnv = isProduction;
   }
 
   // setting the custom configuration
@@ -769,7 +723,7 @@ export async function normalizeUserCompilationConfig(
       if (resolvedCompilation.script.parser.tsConfig !== undefined)
         resolvedCompilation.script.parser.tsConfig.decorators = true;
       else
-        userConfig.compilation.script.parser.tsConfig = {
+        resolvedUserConfig.compilation.script.parser.tsConfig = {
           decorators: true
         };
     }
