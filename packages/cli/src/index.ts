@@ -1,11 +1,8 @@
 import { readFileSync } from 'node:fs';
 
 import { cac } from 'cac';
-import { getOptionFromBuildOption } from './config.js';
 import {
   handleAsyncOperationErrors,
-  preventExperimentalWarning,
-  resolveCliConfig,
   resolveCommandOptions,
   resolveCore
 } from './utils.js';
@@ -91,14 +88,17 @@ cli
 // build command
 cli
   .command('build [root]', 'compile the project in production mode')
-  .option('-o, --outDir <dir>', 'output directory')
-  .option('-i, --input <file>', 'input file path')
-  .option('-w, --watch', 'watch file change')
-  .option('--target <target>', 'transpile targetEnv node, browser')
-  .option('--format <format>', 'transpile format esm, commonjs')
-  .option('--sourcemap', 'output source maps for build')
-  .option('--treeShaking', 'Eliminate useless code without side effects')
-  .option('--minify', 'code compression at build time')
+  .option('-o, --outDir <dir>', '[string] output directory')
+  .option('-i, --input <file>', '[string] input file path')
+  .option('-w, --watch', '[boolean] watch file change')
+  .option('--target <target>', '[string] transpile targetEnv node, browser')
+  .option('--format <format>', '[string] transpile format esm, commonjs')
+  .option('--sourcemap', '[boolean] output source maps for build')
+  .option(
+    '--treeShaking',
+    '[boolean] Eliminate useless code without side effects'
+  )
+  .option('--minify', '[boolean] code compression at build time')
   .action(
     async (
       root: string,
@@ -131,23 +131,24 @@ cli
 
 cli
   .command('watch [root]', 'watch file change')
-  .option('-o, --outDir <dir>', 'output directory')
-  .option('-i, --input <file>', 'input file path')
-  .option('--target <target>', 'transpile targetEnv node, browser')
-  .option('--format <format>', 'transpile format esm, commonjs')
-  .option('--sourcemap', 'output source maps for build')
-  .option('--treeShaking', 'Eliminate useless code without side effects')
-  .option('--minify', 'code compression at build time')
+  .option('-o, --outDir <dir>', '[string] output directory')
+  .option('-i, --input <file>', '[string] input file path')
+  .option('--target <target>', '[string] transpile targetEnv node, browser')
+  .option('--format <format>', '[string] transpile format esm, commonjs')
+  .option('--sourcemap', '[boolean] output source maps for build')
+  .option(
+    '--treeShaking',
+    '[boolean] Eliminate useless code without side effects'
+  )
+  .option('--minify', '[boolean] code compression at build time')
   .action(
     async (
-      rootPath: string,
+      root: string,
       options: FarmCLIBuildOptions & GlobalFarmCLIOptions
     ) => {
-      const { root, configPath } = resolveCliConfig(rootPath, options);
-
       const defaultOptions = {
         root,
-        configPath,
+        configPath: options.configPath,
         mode: options.mode,
         compilation: {
           watch: options.watch,
@@ -177,23 +178,30 @@ cli
   .command('preview [root]', 'compile the project in watch mode')
   .option('--host [host]', `[string] specify hostname`)
   .option('--port <port>', `[number] specify port`)
-  .option('--open', 'open browser on server preview start')
+  .option('--open', '[boolean] open browser on server preview start')
   .option('--outDir <dir>', `[string] output directory (default: dist)`)
   .option('--strictPort', `[boolean] exit if specified port is already in use`)
   .action(
     async (
-      rootPath: string,
+      root: string,
       options: FarmCLIPreviewOptions & GlobalFarmCLIOptions
     ) => {
-      const { root, configPath } = resolveCliConfig(rootPath, options);
-
-      const resolveOptions = resolveCommandOptions(options);
       const defaultOptions = {
         root,
         mode: options.mode,
-        server: resolveOptions,
-        configPath,
-        port: options.port
+        preview: {
+          port: options.port,
+          strictPort: options?.strictPort,
+          host: options.host,
+          open: options.open
+        },
+        configPath: options.configPath,
+        port: options.port,
+        compilation: {
+          output: {
+            path: options.outDir
+          }
+        }
       };
 
       const { preview } = await resolveCore();
@@ -210,10 +218,8 @@ cli
     '--recursive',
     'Recursively search for node_modules directories and clean them'
   )
-  .action(async (rootPath: string, options: ICleanOptions) => {
-    const { root } = resolveCliConfig(rootPath, options);
+  .action(async (root: string, options: ICleanOptions) => {
     const { clean } = await resolveCore();
-
     try {
       await clean(root, options?.recursive);
     } catch (e) {

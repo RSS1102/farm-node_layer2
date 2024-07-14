@@ -149,10 +149,12 @@ export interface FarmCLIBuildOptions {
 }
 
 export interface FarmCLIPreviewOptions {
-  open?: boolean;
   https?: SecureServerOptions;
-  port?: number;
   host?: string | boolean;
+  port?: number
+  open?: boolean | string
+  strictPort?: boolean
+  outDir?: string
 }
 
 export interface FarmCLIOptions

@@ -48,6 +48,9 @@ export interface FarmCLIBuildOptions {
 }
 
 export interface FarmCLIPreviewOptions {
-  open?: boolean;
+  host?: string | boolean;
   port?: number;
+  open?: boolean | string;
+  strictPort?: boolean;
+  outDir?: string;
 }
