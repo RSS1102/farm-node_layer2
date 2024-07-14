@@ -16,6 +16,7 @@ import {
   DEFAULT_COMPILATION_OPTIONS,
   DEFAULT_DEV_SERVER_OPTIONS
 } from '../../config/index.js';
+import { mergeFarmCliConfig } from '../../config/mergeConfig.js';
 import { normalizeExternal } from '../../config/normalize-config/normalize-external.js';
 import {
   getValidPublicPath,
@@ -83,10 +84,12 @@ export async function resolveConfig(
     inlineOptions,
     configEnv
   );
-  console.log(loadedUserConfig);
 
   mode = inlineOptions.mode || loadedUserConfig.config.mode || mode;
   configEnv.mode = mode;
+
+  let rawConfig: UserConfig = mergeFarmCliConfig(inlineOptions, {});
+  console.log(rawConfig);
 
   // if (loadedUserConfig) {
   //   configPath = loadedUserConfig.configFilePath;
