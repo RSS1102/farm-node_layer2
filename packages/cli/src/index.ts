@@ -26,14 +26,25 @@ const cli = cac('farm');
 
 // common command
 cli
-  .option('-c, --config <file>', 'use specified config file')
-  .option('-m, --mode <mode>', 'set env mode')
-  .option('--base <path>', 'public base path')
-  .option('--clearScreen', 'allow/disable clear screen when logging', {
-    default: true
-  });
+  .option(
+    '-c, --config <file>',
+    '[string] use specified config file (default: farm.config.js / farm.config.ts / farm.config.mjs / farm.config.cjs / farm.config.mts / farm.config.cts)'
+  )
+  .option(
+    '-m, --mode <mode>',
+    '[string] set env mode, when use with development (default: /)'
+  )
+  .option('--base <path>', '[string] public base path')
+  .option('-d, --debug [feat]', `[string | boolean] show debug logs`)
+  .option(
+    '--clearScreen',
+    '[boolean] allow/disable clear screen when logging (default: true)',
+    {
+      default: true
+    }
+  );
 
-// dev command
+// start
 cli
   .command(
     '[root]',
@@ -41,29 +52,31 @@ cli
   )
   .alias('start')
   .alias('dev')
-  .option('-l, --lazy', 'lazyCompilation')
-  .option('--host <host>', 'specify host')
-  .option('--port <port>', 'specify port')
-  .option('--open', 'open browser on server start')
-  .option('--hmr', 'enable hot module replacement')
-  .option('--cors', 'enable cors')
-  .option('--strictPort', 'specified port is already in use, exit with error')
+  .option('-l, --lazy', '[boolean] lazyCompilation (default: true)')
+  .option('--host <host>', '[string] specify host')
+  .option('--port <port>', '[string] specify port')
+  .option('--open', '[boolean] open browser on server start')
+  .option('--hmr', '[boolean] enable hot module replacement')
+  .option('--cors', '[boolean] enable cors')
+  .option(
+    '--strictPort',
+    '[boolean] specified port is already in use, exit with error (default: true)'
+  )
   .action(
     async (
-      rootPath: string,
+      root: string,
       options: FarmCLIServerOptions & GlobalFarmCLIOptions
     ) => {
-      const { root, configPath } = resolveCliConfig(rootPath, options);
-      const resolveOptions = resolveCommandOptions(options);
+      const resolveServerOptions = resolveCommandOptions(options);
 
       const defaultOptions = {
         root,
         compilation: {
           lazyCompilation: options.lazy
         },
-        server: resolveOptions,
+        server: resolveServerOptions,
         clearScreen: options.clearScreen,
-        configPath,
+        configPath: options.configPath,
         mode: options.mode
       };
 
@@ -88,15 +101,27 @@ cli
   .option('--minify', 'code compression at build time')
   .action(
     async (
-      rootPath: string,
+      root: string,
       options: FarmCLIBuildOptions & GlobalFarmCLIOptions
     ) => {
-      const { root, configPath } = resolveCliConfig(rootPath, options);
-
       const defaultOptions = {
         root,
-        configPath,
-        ...getOptionFromBuildOption(options)
+        configPath: options.configPath,
+        mode: options.mode,
+        compilation: {
+          watch: options.watch,
+          output: {
+            path: options?.outDir,
+            targetEnv: options?.target,
+            format: options?.format
+          },
+          input: {
+            index: options?.input
+          },
+          sourcemap: options.sourcemap,
+          minify: options.minify,
+          treeShaking: options.treeShaking
+        }
       };
 
       const { build } = await resolveCore();
@@ -123,7 +148,21 @@ cli
       const defaultOptions = {
         root,
         configPath,
-        ...getOptionFromBuildOption(options)
+        mode: options.mode,
+        compilation: {
+          watch: options.watch,
+          output: {
+            path: options?.outDir,
+            targetEnv: options?.target,
+            format: options?.format
+          },
+          input: {
+            index: options?.input
+          },
+          sourcemap: options.sourcemap,
+          minify: options.minify,
+          treeShaking: options.treeShaking
+        }
       };
 
       const { watch } = await resolveCore();
@@ -136,8 +175,11 @@ cli
 
 cli
   .command('preview [root]', 'compile the project in watch mode')
-  .option('--port <port>', 'specify port')
+  .option('--host [host]', `[string] specify hostname`)
+  .option('--port <port>', `[number] specify port`)
   .option('--open', 'open browser on server preview start')
+  .option('--outDir <dir>', `[string] output directory (default: dist)`)
+  .option('--strictPort', `[boolean] exit if specified port is already in use`)
   .action(
     async (
       rootPath: string,
@@ -190,12 +232,6 @@ cli.on('command:*', async () => {
     'Unknown command place Run "farm --help" to see available commands'
   );
 });
-
-// warning::: use mdn browser compatibility data with experimental warning in terminal so prevent experimental warning
-// we don't use it in `@farmfe/core` package because
-// we need to prevent it in cli package but we don't prevent it in core package
-// We only keep the original code environment.
-preventExperimentalWarning();
 
 cli.help();
 
