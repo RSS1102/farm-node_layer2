@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-
 import { cac } from 'cac';
+
 import {
   handleAsyncOperationErrors,
   resolveCommandOptions,
@@ -76,6 +76,8 @@ cli
         configPath: options.configPath,
         mode: options.mode
       };
+
+      console.log(defaultOptions);
 
       const { start } = await resolveCore();
       handleAsyncOperationErrors(

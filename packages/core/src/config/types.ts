@@ -30,13 +30,13 @@ export interface UserServerConfig {
   headers?: OutgoingHttpHeaders | undefined;
   port?: number;
   https?: SecureServerOptions;
-  protocol?: 'http' | 'https';
+  protocol?: 'http' | 'https' | 'http2';
   hostname?: { name: string; host: string | undefined };
   // http2?: boolean;
   hmr?: boolean | UserHmrConfig;
   proxy?: Record<string, Options>;
   strictPort?: boolean;
-  open?: boolean;
+  open?: boolean | string;
   host?: string | boolean;
   cors?: boolean | cors.Options;
   // whether to serve static assets in spa mode, default to true
