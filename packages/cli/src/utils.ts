@@ -1,4 +1,4 @@
-import type { build, clean, preview, start, watch } from '@farmfe/core';
+import type { start } from '@farmfe/core';
 import { Logger } from '@farmfe/core';
 
 import type { GlobalFarmCLIOptions } from './types.js';
@@ -7,10 +7,10 @@ export const logger = new Logger();
 
 export async function resolveCore(): Promise<{
   start: typeof start;
-  build: typeof build;
-  watch: typeof watch;
-  preview: typeof preview;
-  clean: typeof clean;
+  // build: typeof build;
+  // watch: typeof watch;
+  // preview: typeof preview;
+  // clean: typeof clean;
 }> {
   try {
     return import('@farmfe/core');

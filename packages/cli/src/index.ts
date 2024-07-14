@@ -77,8 +77,6 @@ cli
         mode: options.mode
       };
 
-      console.log(defaultOptions);
-
       const { start } = await resolveCore();
       handleAsyncOperationErrors(
         start(defaultOptions),
@@ -126,8 +124,8 @@ cli
         }
       };
 
-      const { build } = await resolveCore();
-      handleAsyncOperationErrors(build(defaultOptions), 'error during build');
+      // const { build } = await resolveCore();
+      // handleAsyncOperationErrors(build(defaultOptions), 'error during build');
     }
   );
 
@@ -168,11 +166,11 @@ cli
         }
       };
 
-      const { watch } = await resolveCore();
-      handleAsyncOperationErrors(
-        watch(defaultOptions),
-        'error during watch project'
-      );
+      // const { watch } = await resolveCore();
+      // handleAsyncOperationErrors(
+      //   watch(defaultOptions),
+      //   'error during watch project'
+      // );
     }
   );
 
@@ -206,11 +204,11 @@ cli
         }
       };
 
-      const { preview } = await resolveCore();
-      handleAsyncOperationErrors(
-        preview(defaultOptions),
-        'Failed to start preview server'
-      );
+      // const { preview } = await resolveCore();
+      // handleAsyncOperationErrors(
+      //   preview(defaultOptions),
+      //   'Failed to start preview server'
+      // );
     }
   );
 
@@ -221,15 +219,15 @@ cli
     'Recursively search for node_modules directories and clean them'
   )
   .action(async (root: string, options: ICleanOptions) => {
-    const { clean } = await resolveCore();
-    try {
-      await clean(root, options?.recursive);
-    } catch (e) {
-      const { Logger } = await import('@farmfe/core');
-      const logger = new Logger();
-      logger.error(`Failed to clean cache: \n ${e.stack}`);
-      process.exit(1);
-    }
+    // const { clean } = await resolveCore();
+    // try {
+    //   await clean(root, options?.recursive);
+    // } catch (e) {
+    //   const { Logger } = await import('@farmfe/core');
+    //   const logger = new Logger();
+    //   logger.error(`Failed to clean cache: \n ${e.stack}`);
+    //   process.exit(1);
+    // }
   });
 
 // Listening for unknown command
