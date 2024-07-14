@@ -1,3 +1,5 @@
+import readline from 'node:readline';
+
 import { Config } from '../../types/binding.js';
 import { ColorFunction, PersistentCacheBrand, colors } from './color.js';
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -32,6 +34,7 @@ interface LoggerOptions {
   name?: string;
   brandColor?: ColorFunction;
   exit?: boolean;
+  checkClearScreen?: boolean;
 }
 
 const LOGGER_METHOD = {
@@ -260,4 +263,16 @@ function cleanStack(stack: string) {
     .split(/\n/g)
     .filter((l) => /^\s*at/.test(l))
     .join('\n');
+}
+
+export function clearScreen() {
+  try {
+    const repeatCount = process.stdout.rows - 2;
+    const blank = repeatCount > 0 ? '\n'.repeat(repeatCount) : '';
+    console.log(blank);
+    readline.cursorTo(process.stdout, 0, 0);
+    readline.clearScreenDown(process.stdout);
+  } catch (error) {
+    console.error('Failed to clear screen:', error);
+  }
 }

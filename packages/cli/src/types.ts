@@ -2,7 +2,7 @@ export interface GlobalFarmCLIOptions {
   '--'?: string[];
   c?: boolean | string;
   config?: string;
-  configPath?: string;
+  configFile?: string;
   m?: string;
   base?: string;
   mode?: 'development' | 'production';

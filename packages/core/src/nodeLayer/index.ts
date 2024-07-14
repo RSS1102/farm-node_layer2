@@ -4,20 +4,14 @@ export * from '../utils/index.js';
 // import path from "node:path";
 // import fse from "fs-extra";
 import { Logger } from '../utils/logger.js';
+import { resolveConfig } from './config/index.js';
 
 export async function start(inlineConfig?: any): Promise<void> {
   inlineConfig = inlineConfig ?? {};
   const logger = inlineConfig.logger ?? new Logger();
 
   try {
-    console.log(inlineConfig);
-
-    // const resolvedUserConfig = await resolveConfig(
-    //   inlineConfig,
-    //   "development",
-    //   logger,
-    // );
-
+    await resolveConfig(inlineConfig, 'start', 'development', 'development');
     // const compiler = await createCompiler(resolvedUserConfig, logger);
 
     // const devServer = await createDevServer(

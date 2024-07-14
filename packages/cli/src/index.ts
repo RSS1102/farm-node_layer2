@@ -59,6 +59,7 @@ cli
     '--strictPort',
     '[boolean] specified port is already in use, exit with error (default: true)'
   )
+  // TODO server 还要改啊
   .action(
     async (
       root: string,
@@ -73,7 +74,7 @@ cli
         },
         server: resolveServerOptions,
         clearScreen: options.clearScreen,
-        configPath: options.configPath,
+        configFile: options.config,
         mode: options.mode
       };
 
@@ -106,7 +107,7 @@ cli
     ) => {
       const defaultOptions = {
         root,
-        configPath: options.configPath,
+        configFile: options.configFile,
         mode: options.mode,
         compilation: {
           watch: options.watch,
@@ -148,7 +149,7 @@ cli
     ) => {
       const defaultOptions = {
         root,
-        configPath: options.configPath,
+        configFile: options.configFile,
         mode: options.mode,
         compilation: {
           watch: options.watch,
@@ -195,7 +196,7 @@ cli
           host: options.host,
           open: options.open
         },
-        configPath: options.configPath,
+        configFile: options.configFile,
         port: options.port,
         compilation: {
           output: {

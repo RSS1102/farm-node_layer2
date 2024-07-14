@@ -67,7 +67,7 @@ export function clearScreen() {
 }
 
 export const version = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '../../package.json')).toString()
+  fs.readFileSync(path.resolve(__dirname, '../../../package.json')).toString()
 ).version;
 
 export function normalizePath(id: string): string {
