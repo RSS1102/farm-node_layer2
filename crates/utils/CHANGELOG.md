@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6](https://github.com/RSS1102/farm-node_layer2/compare/farmfe_utils-v0.1.5...farmfe_utils-v0.1.6) - 2024-08-02
+
+### Fixed
+- single bundle ([#1653](https://github.com/RSS1102/farm-node_layer2/pull/1653))
+
 ## [0.1.5](https://github.com/farm-fe/farm/compare/farmfe_utils-v0.1.4...farmfe_utils-v0.1.5) - 2024-07-11
 
 ### Added
